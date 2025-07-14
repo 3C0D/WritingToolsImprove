@@ -8,13 +8,20 @@ struct PopupView: View {
     @State private var customText: String = ""
     @State private var isCustomLoading: Bool = false
     @State private var processingCommandId: UUID? = nil
-    
+
     // Make edit mode publicly accessible with property wrapper
     // This allows the window to observe changes to edit mode
     @State public var isEditMode = false
-    
+
     @State private var showingCommandsView = false
     @State private var editingCommand: CommandModel? = nil
+
+    // Command slash system
+    @State private var showingCommandDropdown = false
+    @State private var filteredCommands: [CommandModel] = []
+    @State private var selectedCommandIndex = 0
+    @FocusState private var isTextFieldFocused: Bool
+
     let closeAction: () -> Void
     
     // Grid layout for two columns
@@ -72,26 +79,87 @@ struct PopupView: View {
             if !isEditMode {
                 HStack(spacing: 8) {
                     TextField(
-                        appState.selectedText.isEmpty ? "Describe your change..." : "Describe your change...",
+                        appState.selectedText.isEmpty ? "Prompt to apply or command list /" : "Prompt to apply or command list /",
                         text: $customText
                     )
                     .textFieldStyle(.plain)
+                    .focused($isTextFieldFocused)
+                    .onChange(of: customText) { newValue in
+                        handleTextChange(newValue)
+                    }
+                    .onSubmit {
+                        if showingCommandDropdown && selectedCommandIndex < filteredCommands.count {
+                            selectCommand(filteredCommands[selectedCommandIndex])
+                        } else if !customText.isEmpty && !showingCommandDropdown {
+                            processCustomChange()
+                        }
+                    }
                     .appleStyleTextField(
                         text: customText,
                         isLoading: isCustomLoading,
-                        onSubmit: processCustomChange
+                        onSubmit: {
+                            if showingCommandDropdown && selectedCommandIndex < filteredCommands.count {
+                                selectCommand(filteredCommands[selectedCommandIndex])
+                            } else if !customText.isEmpty && !showingCommandDropdown {
+                                processCustomChange()
+                            }
+                        }
                     )
                 }
                 .padding(.horizontal)
             }
-            
+
+            // Command dropdown menu
+            if showingCommandDropdown && !filteredCommands.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(filteredCommands.enumerated()), id: \.element.id) { index, command in
+                        Button(action: {
+                            selectCommand(command)
+                        }) {
+                            HStack {
+                                Image(systemName: command.icon)
+                                    .foregroundColor(.accentColor)
+                                    .frame(width: 20)
+
+                                if let commandIndex = appState.commandManager.getIndex(for: command) {
+                                    Text("\(commandIndex). \(command.name)")
+                                        .foregroundColor(.primary)
+                                } else {
+                                    Text(command.name)
+                                        .foregroundColor(.primary)
+                                }
+
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                index == selectedCommandIndex ?
+                                Color.accentColor.opacity(0.2) :
+                                Color.clear
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .background(Color(.controlBackgroundColor))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color(.separatorColor), lineWidth: 1)
+                )
+                .padding(.horizontal)
+                .animation(.easeInOut(duration: 0.2), value: showingCommandDropdown)
+            }
+
             if !appState.selectedText.isEmpty || !appState.selectedImages.isEmpty {
                 // Command buttons grid
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 8) {
-                        ForEach(appState.commandManager.commands) { command in
+                        ForEach(Array(appState.commandManager.commands.enumerated()), id: \.element.id) { index, command in
                             CommandButton(
                                 command: command,
+                                index: index + 1,
                                 isEditing: isEditMode,
                                 isLoading: processingCommandId == command.id,
                                 onTap: {
@@ -108,8 +176,14 @@ struct PopupView: View {
                                 onDelete: {
                                     print("Deleting command: \(command.name)")
                                     appState.commandManager.deleteCommand(command)
-                                    
+
                                     // Notify that a command was deleted to adjust window size
+                                    NotificationCenter.default.post(name: NSNotification.Name("CommandsChanged"), object: nil)
+                                },
+                                onMove: { fromIndex, toIndex in
+                                    appState.commandManager.moveCommand(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
+
+                                    // Notify that commands were reordered
                                     NotificationCenter.default.post(name: NSNotification.Name("CommandsChanged"), object: nil)
                                 }
                             )
@@ -141,6 +215,35 @@ struct PopupView: View {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(Color.gray.opacity(0.2), lineWidth: 1)
         )
+        .onAppear {
+            isTextFieldFocused = true
+        }
+        .onKeyPress { keyPress in
+            if showingCommandDropdown {
+                switch keyPress.key {
+                case .upArrow:
+                    selectedCommandIndex = max(0, selectedCommandIndex - 1)
+                    return .handled
+                case .downArrow:
+                    selectedCommandIndex = min(filteredCommands.count - 1, selectedCommandIndex + 1)
+                    return .handled
+                case .escape:
+                    showingCommandDropdown = false
+                    customText = ""
+                    return .handled
+                default:
+                    return .ignored
+                }
+            } else {
+                // Handle escape to clear input even when dropdown is not showing
+                if keyPress.key == .escape {
+                    customText = ""
+                    showingCommandDropdown = false
+                    return .handled
+                }
+            }
+            return .ignored
+        }
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: Color.black.opacity(0.2), radius: 10, y: 5)
         .sheet(isPresented: $showingCommandsView) {
@@ -277,4 +380,61 @@ struct PopupView: View {
             appState.isProcessing = false
         }
     }
+
+    // MARK: - Command Slash System
+
+    private func handleTextChange(_ newText: String) {
+        customText = newText
+
+        if newText.starts(with: "/") {
+            let query = String(newText.dropFirst()).lowercased()
+
+            if query.isEmpty {
+                // Show all commands when just "/" is typed
+                filteredCommands = appState.commandManager.commands
+            } else if let index = Int(query), index > 0 && index <= appState.commandManager.commands.count {
+                // If it's a number, show filtered list but don't execute yet
+                if let command = appState.commandManager.getCommand(at: index) {
+                    filteredCommands = [command]
+                } else {
+                    filteredCommands = []
+                }
+            } else {
+                // Fuzzy search: filter commands by name (contains query)
+                filteredCommands = appState.commandManager.commands.filter { command in
+                    command.name.lowercased().contains(query)
+                }
+            }
+
+            showingCommandDropdown = !filteredCommands.isEmpty
+            selectedCommandIndex = 0
+        } else {
+            // Normal text, hide dropdown
+            showingCommandDropdown = false
+        }
+    }
+
+    private func executeCommandByIndex(_ index: Int) {
+        guard let command = appState.commandManager.getCommand(at: index) else { return }
+
+        customText = ""
+        showingCommandDropdown = false
+
+        processingCommandId = command.id
+        Task {
+            await processCommandAndCloseWhenDone(command)
+        }
+    }
+
+    private func selectCommand(_ command: CommandModel) {
+        customText = ""
+        showingCommandDropdown = false
+
+        processingCommandId = command.id
+        Task {
+            await processCommandAndCloseWhenDone(command)
+        }
+    }
+
+
 }

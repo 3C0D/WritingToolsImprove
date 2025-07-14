@@ -213,6 +213,7 @@ class DraggableButton(QtWidgets.QPushButton):
         self.popup = parent_popup
         self.key = key
         self.drag_start_position = None
+        self.temp_drag_enabled = False
         self.setAcceptDrops(True)
         self.icon_container = None
 
@@ -266,8 +267,39 @@ class DraggableButton(QtWidgets.QPushButton):
                 self.drag_start_position = event.pos()
                 event.accept()
                 return
+        elif event.button() == QtCore.Qt.RightButton:
+            if not self.popup.edit_mode:
+                self.show_context_menu(event.globalPos())
+                event.accept()
+                return
         super().mousePressEvent(event)
-            
+
+    def show_context_menu(self, position):
+        """Show context menu for right-click"""
+        menu = QtWidgets.QMenu(self)
+
+        # Edit action
+        edit_action = menu.addAction("Edit Command")
+        edit_action.triggered.connect(lambda: self.popup.edit_button_clicked(self))
+
+        # Delete action (only for custom commands)
+        data = self.popup.load_options()
+        if self.key in data and not data[self.key].get("is_builtin", False):
+            delete_action = menu.addAction("Delete Command")
+            delete_action.triggered.connect(lambda: self.popup.delete_button_clicked(self))
+
+        menu.exec_(position)
+
+    def mouseDoubleClickEvent(self, event):
+        """Handle double-click to enable drag mode"""
+        if event.button() == QtCore.Qt.LeftButton and not self.popup.edit_mode:
+            # Enable temporary drag mode for this button
+            self.drag_start_position = event.pos()
+            self.temp_drag_enabled = True
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
+
     def mouseMoveEvent(self, event):
         if not (event.buttons() & QtCore.Qt.LeftButton) or not self.drag_start_position:
             return
@@ -276,7 +308,8 @@ class DraggableButton(QtWidgets.QPushButton):
         if distance < QtWidgets.QApplication.startDragDistance():
             return
 
-        if self.popup.edit_mode:
+        # Allow drag in edit mode OR after double-click
+        if self.popup.edit_mode or self.temp_drag_enabled:
             drag = QtGui.QDrag(self)
             mime_data = QtCore.QMimeData()
             idx = self.popup.button_widgets.index(self)
@@ -288,11 +321,14 @@ class DraggableButton(QtWidgets.QPushButton):
             drag.setHotSpot(event.pos())
 
             self.drag_start_position = None
+            self.temp_drag_enabled = False
             drop_action = drag.exec_(QtCore.Qt.MoveAction)
             logging.debug(f"Drag completed with action: {drop_action}")
 
     def dragEnterEvent(self, event):
-        if self.popup.edit_mode and event.mimeData().hasFormat("application/x-button-index"):
+        # Accept drag in edit mode OR when any button has temp_drag_enabled
+        has_temp_drag = any(btn.temp_drag_enabled for btn in self.popup.button_widgets)
+        if (self.popup.edit_mode or has_temp_drag) and event.mimeData().hasFormat("application/x-button-index"):
             event.acceptProposedAction()
             self.setStyleSheet(self.base_style + """
                 QPushButton {
@@ -307,7 +343,8 @@ class DraggableButton(QtWidgets.QPushButton):
         event.accept()
 
     def dropEvent(self, event):
-        if not self.popup.edit_mode or not event.mimeData().hasFormat("application/x-button-index"):
+        # Allow drop in edit mode OR when temp_drag_enabled
+        if not event.mimeData().hasFormat("application/x-button-index"):
             event.ignore()
             return
 
@@ -318,6 +355,7 @@ class DraggableButton(QtWidgets.QPushButton):
             bw = self.popup.button_widgets
             bw[source_idx], bw[target_idx] = bw[target_idx], bw[source_idx]
             self.popup.rebuild_grid_layout()
+            self.popup.update_button_indexes()  # Update indexes after reordering
             self.popup.update_json_from_grid()
 
         self.setStyleSheet(self.base_style)
@@ -345,6 +383,12 @@ class CustomPopupWindow(QtWidgets.QWidget):
         self.input_area = None
         
         self.button_widgets = []
+
+        # Command slash system
+        self.command_dropdown = None
+        self.filtered_commands = []
+        self.selected_command_index = 0
+        self.showing_dropdown = False
 
         logging.debug('Initializing CustomPopupWindow')
         self.init_ui()
@@ -462,7 +506,7 @@ class CustomPopupWindow(QtWidgets.QWidget):
         input_layout.setContentsMargins(0,0,0,0)
         
         self.custom_input = QLineEdit()
-        self.custom_input.setPlaceholderText(_("Describe your change...") if self.has_text else _("Ask your AI..."))
+        self.custom_input.setPlaceholderText(_("Prompt to apply or command list /") if self.has_text else _("Prompt to apply or command list /"))
         self.custom_input.setStyleSheet(f"""
             QLineEdit {{
                 padding: 8px;
@@ -473,6 +517,7 @@ class CustomPopupWindow(QtWidgets.QWidget):
             }}
         """)
         self.custom_input.returnPressed.connect(self.on_custom_change)
+        self.custom_input.textChanged.connect(self.handle_text_change)
         input_layout.addWidget(self.custom_input)
         
         send_btn = QPushButton()
@@ -517,6 +562,7 @@ class CustomPopupWindow(QtWidgets.QWidget):
         
         logging.debug('CustomPopupWindow UI setup complete')
         self.installEventFilter(self)
+        self.custom_input.installEventFilter(self)
         QtCore.QTimer.singleShot(250, lambda: self.custom_input.setFocus())
 
     @staticmethod
@@ -545,18 +591,36 @@ class CustomPopupWindow(QtWidgets.QWidget):
         self.button_widgets.clear()
         data = self.load_options()
 
+        index = 1
         for k,v in data.items():
             if k=="Custom":
                 continue
-            b = DraggableButton(self, k, k)
+            # Add index number to button text
+            button_text = f"{index}. {k}"
+            b = DraggableButton(self, k, button_text)
             icon_path = os.path.join(os.path.dirname(sys.argv[0]),
                                     v["icon"] + ('_dark' if colorMode=='dark' else '_light') + '.png')
             if os.path.exists(icon_path):
                 b.setIcon(QtGui.QIcon(icon_path))
-                
+
             if not self.edit_mode:
                 b.clicked.connect(partial(self.on_generic_instruction, k))
             self.button_widgets.append(b)
+            index += 1
+
+    def update_button_indexes(self):
+        """Update button texts with current indexes after reordering"""
+        for i, button in enumerate(self.button_widgets):
+            # Extract original command name (remove old index)
+            current_text = button.text()
+            if ". " in current_text:
+                command_name = current_text.split(". ", 1)[1]
+            else:
+                command_name = current_text
+
+            # Set new text with updated index
+            new_text = f"{i + 1}. {command_name}"
+            button.setText(new_text)
 
     def rebuild_grid_layout(self, parent_layout=None):
         """Rebuild grid layout with consistent sizing and proper Add New button placement."""
@@ -891,8 +955,116 @@ class CustomPopupWindow(QtWidgets.QWidget):
             new_data[b.key] = data[b.key]
         self.save_options(new_data)
 
+    # MARK: - Command Slash System
+
+    def handle_text_change(self, text):
+        """Handle text changes in the input field for slash command system"""
+        if text.startswith("/"):
+            query = text[1:].lower()
+
+            if not query:
+                # Show all commands when just "/" is typed
+                data = self.load_options()
+                commands = [k for k in data.keys() if k != "Custom"]
+                self.show_command_dropdown(commands)
+            elif query.isdigit():
+                # If it's a number, show filtered list but don't execute yet
+                try:
+                    index = int(query)
+                    data = self.load_options()
+                    commands = [k for k in data.keys() if k != "Custom"]
+                    if 1 <= index <= len(commands):
+                        # Show only the matching command
+                        self.show_command_dropdown([commands[index - 1]])
+                    else:
+                        self.hide_command_dropdown()
+                except (ValueError, IndexError):
+                    self.hide_command_dropdown()
+            else:
+                # Fuzzy search: filter commands by name (contains query)
+                data = self.load_options()
+                filtered = [k for k in data.keys() if k != "Custom" and query in k.lower()]
+                if filtered:
+                    self.show_command_dropdown(filtered)
+                else:
+                    self.hide_command_dropdown()
+        else:
+            # Normal text, hide dropdown
+            self.hide_command_dropdown()
+
+    def show_command_dropdown(self, commands):
+        """Show dropdown with filtered commands"""
+        if not commands:
+            self.hide_command_dropdown()
+            return
+
+        self.filtered_commands = commands
+        self.selected_command_index = 0
+        self.showing_dropdown = True
+
+        # Create dropdown if it doesn't exist
+        if not self.command_dropdown:
+            self.command_dropdown = QtWidgets.QListWidget(self)
+            self.command_dropdown.setWindowFlags(QtCore.Qt.Popup)
+            self.command_dropdown.itemClicked.connect(self.on_dropdown_item_clicked)
+
+        # Clear and populate dropdown
+        self.command_dropdown.clear()
+        for i, cmd in enumerate(commands):
+            if cmd != "Custom":
+                item_text = f"{i+1}. {cmd}"
+                self.command_dropdown.addItem(item_text)
+
+        # Position dropdown below input field
+        input_pos = self.custom_input.mapToGlobal(self.custom_input.rect().bottomLeft())
+        self.command_dropdown.move(input_pos)
+        self.command_dropdown.resize(self.custom_input.width(), min(200, len(commands) * 25))
+        self.command_dropdown.show()
+        self.command_dropdown.setCurrentRow(0)
+
+    def hide_command_dropdown(self):
+        """Hide the command dropdown"""
+        self.showing_dropdown = False
+        if self.command_dropdown:
+            self.command_dropdown.hide()
+
+    def execute_command_by_index(self, index):
+        """Execute command by its index number"""
+        data = self.load_options()
+        commands = [k for k in data.keys() if k != "Custom"]
+
+        if 1 <= index <= len(commands):
+            command_key = commands[index - 1]
+            self.custom_input.clear()
+            self.hide_command_dropdown()
+            self.app.process_option(command_key, self.selected_text, "")
+            self.close()
+
+    def on_dropdown_item_clicked(self, item):
+        """Handle dropdown item click"""
+        if self.filtered_commands:
+            # Extract command name from "1. CommandName" format
+            item_text = item.text()
+            command_name = item_text.split(". ", 1)[1] if ". " in item_text else item_text
+
+            self.custom_input.clear()
+            self.hide_command_dropdown()
+            self.app.process_option(command_name, self.selected_text, "")
+            self.close()
+
     def on_custom_change(self):
         txt = self.custom_input.text().strip()
+
+        # Handle slash commands
+        if self.showing_dropdown and self.filtered_commands:
+            # Execute selected command from dropdown
+            if self.selected_command_index < len(self.filtered_commands):
+                command_name = self.filtered_commands[self.selected_command_index]
+                self.hide_command_dropdown()
+                self.app.process_option(command_name, self.selected_text, "")
+                self.close()
+                return
+
         if txt:
             self.app.process_option('Custom', self.selected_text, txt)
             self.close()
@@ -903,6 +1075,39 @@ class CustomPopupWindow(QtWidgets.QWidget):
             self.close()
 
     def eventFilter(self, obj, event):
+        # Handle keyboard events for dropdown navigation
+        if obj == self.custom_input and event.type() == QtCore.QEvent.KeyPress:
+            if self.showing_dropdown and self.command_dropdown:
+                if event.key() == QtCore.Qt.Key_Up:
+                    self.selected_command_index = max(0, self.selected_command_index - 1)
+                    self.command_dropdown.setCurrentRow(self.selected_command_index)
+                    return True
+                elif event.key() == QtCore.Qt.Key_Down:
+                    self.selected_command_index = min(len(self.filtered_commands) - 1, self.selected_command_index + 1)
+                    self.command_dropdown.setCurrentRow(self.selected_command_index)
+                    return True
+                elif event.key() == QtCore.Qt.Key_Escape:
+                    self.hide_command_dropdown()
+                    self.custom_input.clear()
+                    return True
+                elif event.key() == QtCore.Qt.Key_Return or event.key() == QtCore.Qt.Key_Enter:
+                    if self.selected_command_index < len(self.filtered_commands):
+                        command_name = self.filtered_commands[self.selected_command_index]
+                        self.custom_input.clear()
+                        self.hide_command_dropdown()
+                        self.app.process_option(command_name, self.selected_text, "")
+                        self.close()
+                        return True
+                elif event.key() == QtCore.Qt.Key_Backspace:
+                    # Allow backspace to work normally and update dropdown
+                    return False  # Let the normal backspace handling occur
+
+            # Handle escape to clear input even when dropdown is not showing
+            if event.key() == QtCore.Qt.Key_Escape:
+                self.custom_input.clear()
+                self.hide_command_dropdown()
+                return True
+
         # Hide on deactivate only if NOT in edit mode
         if event.type()==QtCore.QEvent.WindowDeactivate:
             if not self.edit_mode:

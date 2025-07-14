@@ -46,22 +46,60 @@ If you find value in it, it would mean the world to me if you could support us a
 ## ⚡ What can I do with Writing Tools, exactly?
 
 ### 1️⃣ Hyper-intelligent Writing Tools:
+
 - Select _any_ text on your PC and invoke Writing Tools with `ctrl+space`.
 - Choose **Proofread**, **Rewrite**, **Friendly**, **Professional**, **Concise**, or even enter **custom instructions** (e.g., _"add comments to this code"_, _"make it title case"_, _"translate to French"_).
 - Your text will instantly be replaced with the AI-optimized version. Use `ctrl+z` to revert.
 - If the text is in a non-editable field (e.g., a webpage), the transformed text will be shown in a modal window instead of replacing it.
 
 ### 2️⃣ Powerful content summarization that you can chat with:
+
 - Select all text in any webpage, document, email, etc., with `ctrl+a`, or select the transcript of a YouTube video (from its description).
 - Choose **Summary**, **Key Points**, or **Table** after invoking Writing Tools.
 - Get a pop-up summary with clear and beautiful formatting (with Markdown rendering), saving you hours.
 - Chat with the summary if you'd like to learn more or have questions.
 
 ### 3️⃣ Go wild with your own buttons!
+
 - They're your own magic buttons. Dream, and it'll magically be done with AI.
 
 ### 3️⃣ Chat with an LLM anytime in a click:
+
 - Press `ctrl+space` without selecting text to start a conversation with your LLM _(for privacy, chat history is deleted when you close the window)_.
+
+## 🚀 **New Enhanced Command Interface**
+
+Writing Tools now features a powerful command system that makes accessing your tools faster and more intuitive:
+
+### ⚡ **Slash Commands with Dropdown Menu**
+
+- Type `/` in the input field to see all available commands with their numbered indexes
+- Filter commands by typing after `/` (e.g., `/proof` to find "Proofread")
+- Navigate with arrow keys and press Enter to select
+
+### 🔢 **Quick Command Access by Number**
+
+- Each command now has a numbered index (1. Proofread, 2. Rewrite, etc.)
+- Type `/1`, `/2`, etc. to instantly execute commands by their number
+- Perfect for power users: `Ctrl+Space` → `/1` → instant proofreading!
+
+### 🎯 **Enhanced Drag & Drop**
+
+- **Double-click** any command button to enable drag mode
+- Drag commands to reorder them without entering edit mode
+- Visual feedback shows when dragging is active
+
+### 🖱️ **Right-Click Context Menu**
+
+- **Right-click** any command for instant editing
+- No need to enter edit mode first - direct access to command settings
+- Streamlined workflow for command management
+
+### 📝 **Improved Input Field**
+
+- New placeholder text: "Prompt to apply or command list /"
+- Clearer indication of the slash command functionality
+- Auto-focus for immediate typing when popup opens
 
 ## 🌟 Why Choose Writing Tools?
 
@@ -71,7 +109,7 @@ Aside from being the only Windows/Linux program like Apple's Writing Tools, and 
 - **Completely free and open-source:** No subscriptions or hidden costs. Bloat-free and uses **~0% of your CPU** even when actively using it.
 - **Versatile AI LLM support:** Jump in quickly with the **free Gemini API & Gemini 2.0**, or an extensive range of **local LLMs** (via Ollama [[instructions]](https://github.com/theJayTea/WritingTools?tab=readme-ov-file#-optional-ollama-local-llm-instructions-for-windowslinux-v7-onwards), llama.cpp, KoboldCPP, TabbyAPI, vLLM, etc.) or **cloud-based LLMs** (ChatGPT, Mistral AI, etc.) through Writing Tools' OpenAI-API-compatibility.
 - **Does not mess with your clipboard, and works system-wide.**
-- **Privacy-focused**: Your API key and config files stay on *your* device. NO logging, diagnostic collection, tracking, or ads. Invoked *only* on your command. Local LLMs keep your data on your device & work without the internet.
+- **Privacy-focused**: Your API key and config files stay on _your_ device. NO logging, diagnostic collection, tracking, or ads. Invoked _only_ on your command. Local LLMs keep your data on your device & work without the internet.
 - **Supports multiple languages:** Works with any language and translates text better than Google Translate (type "translate to [language]" in `Describe your change...`).
 - **Code support:** Fix, improve, translate, or add comments to code with `Describe your change...`."
 - **Themes, Dark Mode, & Customization**: Choose between **2 themes**: a blurry gradient theme and a plain theme that resembles the Windows + V pop-up! Also has full **dark mode** support. **Set your own hotkey** for quick access.
@@ -79,24 +117,29 @@ Aside from being the only Windows/Linux program like Apple's Writing Tools, and 
 ## ✅ **1 Minute Installation**
 
 ### **🪟 Windows**:
+
 1. Go to the [Releases](https://github.com/theJayTea/WritingTools/releases) page and download the latest `Writing.Tools.zip` file.
 2. Extract it to your desired location (recommended: `Documents` or `App Data/Local`), run `Writing Tools.exe`, and enjoy! :D
 
-*Note: Writing Tools is a portable app. If you extract it into a protected folder (e.g., Program Files), you must run it as administrator at least on first launch so it can create/edit its config files (in the same folder as its exe).*
+_Note: Writing Tools is a portable app. If you extract it into a protected folder (e.g., Program Files), you must run it as administrator at least on first launch so it can create/edit its config files (in the same folder as its exe)._
 
 **PS: Go to Writing Tools' Settings (from its tray icon at the bottom right of the taskbar) to enable starting Writing Tools on boot.**
 
 ### **🐧 Linux (work-in-progress)**:
+
 [Run it from the source code](https://github.com/theJayTea/WritingTools/blob/8713e5a5de63a7892b05a43b9753172e692768fb/README's%20Linked%20Content/To%20Run%20Writing%20Tools%20Directly%20from%20the%20Source%20Code.md)
 
 Writing Tools works well on x11. On Wayland, there are a few caveats:
+
 - [it works on XWayland apps](https://github.com/theJayTea/WritingTools/issues/34#issuecomment-2461633556)
 - [and it works if you disable Wayland for individual Flatpaks with Flatseal.](https://github.com/theJayTea/WritingTools/issues/93#issuecomment-2576511041)
 
 ### **🍎 macOS**:
+
 The macOS version is a **native Swift port**, developed by [Arya Mirsepasi](https://github.com/Aryamirsepasi). View the [README inside the macOS folder](https://github.com/theJayTea/WritingTools/tree/main/macOS) to learn more.
 
 To install it:
+
 1. Go to the [Releases](https://github.com/theJayTea/WritingTools/releases) page and download the latest macOS `.dmg` file.
 2. Open the `.dmg` file, also open a Finder Window, and drag the `writing-tools.app` into the Applications folder. That's it!
 
@@ -109,6 +152,7 @@ To install it:
 https://github.com/user-attachments/assets/dd4780d4-7cdb-4bdb-9a64-e93520ab61be
 
 #### 2️⃣ Make Writing Tools work better in MS Word: the `ctrl+space` keyboard shortcut is mapped to "Clear Formatting", making you lose paragraph indentation. Here's how to improve this:
+
 P.S.: Word's rich-text formatting (bold, italics, underline, colours...) will be lost on using Writing Tools. A Markdown editor such as [Obsidian](https://obsidian.md/) has no such issue.
 
 https://github.com/user-attachments/assets/42a3d8c7-18ac-4282-9478-16aab935f35e
@@ -116,9 +160,10 @@ https://github.com/user-attachments/assets/42a3d8c7-18ac-4282-9478-16aab935f35e
 ## 🔒 Privacy
 
 I believe strongly in protecting your privacy. Writing Tools:
+
 - Does not collect or store any of your writing data by itself. It doesn't even collect general logs, so it's super light and privacy-friendly.
 - Lets you use local LLMs to process your text entirely on-device.
-- Only sends text to the chosen AI provider (encrypted) when you *explicitly* use one of the options.
+- Only sends text to the chosen AI provider (encrypted) when you _explicitly_ use one of the options.
 - Only stores your API key locally on your device.
 
 Note: If you choose to use a cloud based LLM, refer to the AI provider's privacy policy and terms of service.
@@ -131,12 +176,15 @@ Note: If you choose to use a cloud based LLM, refer to the AI provider's privacy
 - **Custom Instructions:** Tailor your request (e.g., "Translate to French") through `Describe your change...`.
 
 The following options respond in a pop-up window (with markdown rendering, selectable text, and a zoom level that saves & applies on app restarts):
+
 - **Summarize:** Create clear and concise summaries.
 - **Extract Key Points:** Highlight the most important points.
 - **Create Tables:** Convert text into a formatted table. PS: You can copy & paste the table into MS Word.
 
 ## 🦙 (Optional) Ollama Local LLM Instructions [for Windows/Linux v7 onwards]:
+
 These instructions are for Writing Tools Windows/Linux v7+, using its native Ollama provider:
+
 1. [Download](https://ollama.com/download) and install Ollama.
 2. Choose an LLM from [here](https://ollama.com/library). Recommended: `Llama 3.1 8B` (~8GB RAM of VRAM required).
 3. Run `ollama pull llama3.1:8b` in your terminal to download it.
@@ -144,7 +192,9 @@ These instructions are for Writing Tools Windows/Linux v7+, using its native Oll
 5. That's it! **Enjoy Writing Tools with _absolute_ privacy and no internet connection!** 🎉 From now on, you'll simply need to launch Ollama and Writing Tools into the background for it to work.
 
 ## 🦙 (Optional) Ollama Local LLM Instructions:
+
 These instructions are for any Writing Tools version, using the OpenAI-Compatible provider:
+
 1. [Download](https://ollama.com/download) and install Ollama.
 2. Choose an LLM from [here](https://ollama.com/library). Recommended: `Llama 3.1 8B` (~8GB RAM of VRAM/RAM required).
 3. Run `ollama pull llama3.1:8b` in your terminal to download Llama 3.1.
@@ -155,8 +205,9 @@ These instructions are for any Writing Tools version, using the OpenAI-Compatibl
 5. That's it! **Enjoy Writing Tools with _absolute_ privacy and no internet connection!** 🎉 From now on, you'll simply need to launch Ollama and Writing Tools into the background for it to work.
 
 ## 🐞 Known Issues
+
 1. (Being investigated) On some devices, Writing Tools does not work correctly with the default hotkey.
-   
+
    To fix it, simply change the hotkey to **ctrl+`** or **ctrl+j** and restart Writing Tools. PS: If a hotkey is already in use by a program or background process, Writing Tools may not be able to intercept it. The above hotkeys are usually unused.
 
 2. The initial launch of the `Writing Tools.exe` might take unusually long — this seems to be because AV software extensively scans this new executable before letting it run. Once it launches into the background in RAM, it works instantly as usual.
@@ -164,7 +215,6 @@ These instructions are for any Writing Tools version, using the OpenAI-Compatibl
 ## 👨‍💻 To Run Writing Tools Directly from the Source Code
 
 [Instructions here!](https://github.com/theJayTea/WritingTools/blob/8713e5a5de63a7892b05a43b9753172e692768fb/README's%20Linked%20Content/To%20Run%20Writing%20Tools%20Directly%20from%20the%20Source%20Code.md)
-
 
 ## 👨‍💻 To Compile the Application Yourself:
 
@@ -175,6 +225,7 @@ These instructions are for any Writing Tools version, using the OpenAI-Compatibl
 Writing Tools would not be where it is today without its amazing contributors:
 
 ### 🪟🐧 Windows & Linux version:
+
 **1. [momokrono](https://github.com/momokrono):**
 
 Added Linux support, switched to the pynput API to improve Windows stability. Added Ollama API support, the core logic for customisable buttons, and localization. Fixed misc. bugs and added graceful termination support by handling SIGINT signal.
@@ -206,6 +257,7 @@ Significantly improved the About window, making it scrollable and cleaning thing
 Helped add the start-on-boot setting!
 
 ### 🍎 macOS version:
+
 #### A native Swift port created entirely by **[Arya Mirsepasi](https://github.com/Aryamirsepasi)**! This was a big endeavour and he's done an increadble job.
 
 Over so many emails, @Aryamirsepasi has been someone I truly look up to, and it's rare to find people as kind as him. We're incredibly grateful for all his contributions here! — Jesai
